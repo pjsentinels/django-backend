@@ -1,0 +1,11 @@
+levantar contenedor
+```
+docker-compose up --build
+```
+
+levantar vault (una vez):
+
+```
+docker exec -it vault sh /vault/vault_init.sh
+```
+
