@@ -2,7 +2,6 @@
 import os
 import sys
 
-
 def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
     try:
@@ -10,7 +9,6 @@ def main():
     except ImportError as exc:
         raise
     execute_from_command_line(sys.argv)
-
 
 if __name__ == "__main__":
     main()

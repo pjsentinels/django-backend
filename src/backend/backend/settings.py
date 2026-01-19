@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "dev-only-secret"  # en prod viene de Vault
+SECRET_KEY = "dev-only-secret"
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
@@ -48,12 +48,34 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
+# ============================
+# DATABASE — POSTGRESQL
+# ============================
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "myapp",
+        "USER": "admin",
+        "PASSWORD": "superadmin",
+        "HOST": "postgres",
+        "PORT": "5432",
     }
 }
+
+if DATABASES["default"]["ENGINE"] != "django.db.backends.postgresql":
+    raise RuntimeError("PostgreSQL must be configured")
+
+# ============================
+# CELERY
+# ============================
+
+CELERY_BROKER_URL = "redis://redis:6379/0"
+CELERY_RESULT_BACKEND = "redis://redis:6379/1"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+
+# ============================
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

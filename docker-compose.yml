@@ -5,20 +5,29 @@ networks:
 services:
 
   postgres:
-    image: postgres:15
+    image: postgres:16
     container_name: postgres
     networks: [secure_net]
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: myapp
-      POSTGRES_USER: myapp
-      POSTGRES_PASSWORD: myapp_password
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: superadmin
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7
+    container_name: redis
+    networks: [secure_net]
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
+    image: quay.io/keycloak/keycloak:25.0
     container_name: keycloak
     command: start-dev
     networks: [secure_net]
@@ -26,7 +35,7 @@ services:
       - ./data/keycloak:/opt/keycloak/data
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN_PASSWORD: superadmin
     ports:
       - "8080:8080"
     depends_on:
@@ -53,11 +62,23 @@ services:
     networks: [secure_net]
     volumes:
       - ./src/backend:/app
-      - ./data/django:/app/media
+      - ./data/django/media:/app/media
     depends_on:
       - postgres
       - keycloak
       - vault
+      - redis
     ports:
       - "8000:8000"
- 
+    command: python manage.py runserver 0.0.0.0:8000
+
+  celery:
+    build: .
+    container_name: celery
+    networks: [secure_net]
+    command: celery -A core worker -l info
+    volumes:
+      - ./src/backend:/app
+    depends_on:
+      - django
+      - redis

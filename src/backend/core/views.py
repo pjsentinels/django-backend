@@ -1,13 +1,4 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.http import JsonResponse
 
-
-class HealthView(APIView):
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        return Response({
-            "status": "ok",
-            "service": "backend",
-        })
+def healthcheck(request):
+    return JsonResponse({"status": "ok"})
