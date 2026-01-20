@@ -1,13 +1,66 @@
 from pathlib import Path
 import os
 
+from backend.vault import get_secret, is_ci
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "dev-only-secret"  # en prod viene de Vault
 DEBUG = True
-
 ALLOWED_HOSTS = ["*"]
 
+# Obtenemos el secreto una sola vez para optimizar
+vault_data = get_secret("myapp/django")
+
+# =========================
+# SECRET KEY
+# =========================
+# Si hay datos en Vault los usa, si no, usa la clave de desarrollo
+SECRET_KEY = vault_data.get("secret_key", "django-insecure-dev-key") if vault_data else "django-insecure-dev-key"
+
+# =========================
+# DATABASE (POSTGRES)
+# =========================
+if is_ci():
+    # CI usa Postgres del servicio de GitHub Actions
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "sentinels_db",
+            "USER": "test",
+            "PASSWORD": "test",
+            "HOST": "localhost",
+            "PORT": "5432",
+        }
+    }
+elif vault_data and "database" in vault_data:
+    # Local / Prod → Usa datos de Vault
+    db = vault_data["database"]
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": db["name"],
+            "USER": db["user"],
+            "PASSWORD": db["password"],
+            "HOST": db["host"],   # postgres
+            "PORT": db["port"],   # 5432
+        }
+    }
+else:
+    # Fallback: Local con Docker Compose (si Vault falla o no tiene datos)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'sentinels_db',
+            'USER': 'admin',       
+            'PASSWORD': 'superadmin',
+            'HOST': 'postgres',     
+            'PORT': '5432',
+        }
+    }
+
+# =========================
+# APPS
+# =========================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -19,6 +72,9 @@ INSTALLED_APPS = [
     "core",
 ]
 
+# =========================
+# MIDDLEWARE
+# =========================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -29,7 +85,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "backend.urls"
+WSGI_APPLICATION = "backend.wsgi.application"
 
+# =========================
+# TEMPLATES
+# =========================
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -45,20 +105,6 @@ TEMPLATES = [
         },
     },
 ]
-
-WSGI_APPLICATION = "backend.wsgi.application"
-
-DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.getenv("DB_NAME", BASE_DIR / "db.sqlite3"),
-        "USER": os.getenv("DB_USER", ""),
-        "PASSWORD": os.getenv("DB_PASSWORD", ""),
-        "HOST": os.getenv("DB_HOST", ""),
-        "PORT": os.getenv("DB_PORT", ""),
-    }
-}
-
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
