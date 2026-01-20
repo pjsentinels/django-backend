@@ -16,9 +16,9 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:18
         env:
-          POSTGRES_DB: testdb
+          POSTGRES_DB: sentinels_db
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
         ports:
@@ -30,33 +30,33 @@ jobs:
           --health-retries=5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install Postgres Client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U test; do
+            sleep 1
+          done
+
       - name: Run migrations
         env:
-          DB_ENGINE: django.db.backends.postgresql
-          DB_NAME: testdb
-          DB_USER: test
-          DB_PASSWORD: test
-          DB_HOST: localhost
-          DB_PORT: 5432
+          CI: "true"
+          PYTHONPATH: src/backend # Para que encuentre 'backend.vault'
         run: python src/backend/manage.py migrate
 
       - name: Run tests
         env:
-          DB_ENGINE: django.db.backends.postgresql
-          DB_NAME: testdb
-          DB_USER: test
-          DB_PASSWORD: test
-          DB_HOST: localhost
-          DB_PORT: 5432
+          CI: "true"
+          PYTHONPATH: src/backend
         run: python src/backend/manage.py test
+
