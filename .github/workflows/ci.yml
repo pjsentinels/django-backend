@@ -5,6 +5,7 @@ on:
     branches:
       - develop
       - feature/**
+      - hotfix/**
   pull_request:
     branches:
       - develop
@@ -22,13 +23,40 @@ jobs:
           POSTGRES_PASSWORD: test
         ports:
           - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
-      - run: python src/backend/manage.py migrate
-      - run: python src/backend/manage.py test
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        env:
+          DB_ENGINE: django.db.backends.postgresql
+          DB_NAME: testdb
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+        run: python src/backend/manage.py migrate
+
+      - name: Run tests
+        env:
+          DB_ENGINE: django.db.backends.postgresql
+          DB_NAME: testdb
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+        run: python src/backend/manage.py test
